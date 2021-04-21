@@ -169,6 +169,338 @@ Content-Type: text/html;charset=UTF-8 Content-Length: 3423
 
 서블릿
 =======
+### HttpServeltRequest 개요
+
+##### HttpServletRequest 역할
+- 서블릿은 개발자가 HTTP 요청 메시지를 편리하게 사용할 수 있도록 개발자 대신에 HTTP 요청 메시지를 파싱하고 그 결과를 `HttpServletRequest` 객체에 담아서 제공
+- HTTP 요청 메시지
+  - 메시지 예시
+  ```json
+  POST /save HTTP/1.1
+  Host: localhost:8080
+  Content-Type: application/x-www-form-urlencoded
+  username=kim&age=20
+  ```
+  - START LINE
+    - HTTP 메소드
+    - URL
+    - 쿼리 스트링
+    - 스키마, 프로토콜 
+  - 헤더
+    - 헤더 조회
+  - 바디
+    - form 파라미터 형식 조회
+    - message body 데이터 직접 조회
+- 임시 저장소 기능
+  - 저장: request.setAttribute(name, value)
+  - 조회: request.getAttribute(name)
+- 세션 관리 기능: request.getSession(create: true)
+
+### HttpServeltRequest 기본 사용법
+- 서블릿 요청 처리 코드
+```java
+// http://localhost:8080/request-header?username=hello
+@WebServlet(name = "requestHeaderServlet", urlPatterns = "/request-header") 
+public class RequestHeaderServlet extends HttpServlet {
+
+    @Override
+    protected void service(HttpServletRequest request, HttpServletResponse response)
+                throws ServletException, IOException 
+    {
+        printStartLine(request);
+        printHeaders(request);
+        printHeaderUtils(request);
+        printEtc(request);
+        response.getWriter().write("ok"); 
+    }
+}
+```
+- 출력 코드
+  - start-line
+  ```java
+  private void printStartLine(HttpServletRequest request) {
+    System.out.println("--- REQUEST-LINE - start ---");
+    System.out.println("request.getMethod() = " + request.getMethod()); // GET
+    System.out.println("request.getProtocal() = " + request.getProtocol()); // HTTP/1.1
+    System.out.println("request.getScheme() = " + request.getScheme()); // http
+    System.out.println("request.getRequestURL() = " + request.getRequestURL()); // http://localhost:8080/request-header
+    System.out.println("request.getRequestURI() = " + request.getRequestURI()); // /request-header
+    System.out.println("request.getQueryString() = " + request.getQueryString()); // username=hi
+    System.out.println("request.isSecure() = " + request.isSecure()); //https 사용 유무
+    System.out.println("--- REQUEST-LINE - end ---");
+    System.out.println();
+  }
+  ```
+  - 헤더 
+  ```java
+  private void printHeaders(HttpServletRequest request) {
+    System.out.println("--- Headers - start ---"); 
+    request.getHeaderNames().asIterator()
+                            .forEachRemaining(headerName -> System.out.println(headerName + ":" + request.getHeader(headerName))); 
+    System.out.println("--- Headers - end ---"); 
+    System.out.println();
+  }
+  ```
+  ```java
+   private void printHeaderUtils(HttpServletRequest request) {
+    System.out.println("--- Header 편의 조회 start ---"); 
+    System.out.println("[Host 편의 조회]"); 
+    System.out.println("request.getServerName() = " + request.getServerName()); //Host 헤더 
+    System.out.println("request.getServerPort() = " + request.getServerPort()); //Host 헤더 
+    System.out.println();
+    
+    System.out.println("[Accept-Language 편의 조회]");
+    request.getContentLength()); 
+    System.out.println("request.getCharacterEncoding() = " + request.getCharacterEncoding());
+    
+    System.out.println("--- Header 편의 조회 end ---");
+    System.out.println(); 
+
+    System.out.println("[cookie 편의 조회]"); 
+    if (request.getCookies() != null) {
+        for (Cookie cookie : request.getCookies()) { 
+            System.out.println(cookie.getName() + ": " + cookie.getValue());
+        } 
+    }
+    System.out.println();
+    System.out.println("[Content 편의 조회]");
+    
+    System.out.println("request.getContentType() = " + request.getContentType());
+    System.out.println("request.getContentLength() = " + request.getContentLength()); 
+    System.out.println("request.getCharacterEncoding() = " + request.getCharacterEncoding());
+
+    System.out.println("--- Header 편의 조회 end ---");
+    System.out.println();
+
+  }
+  ```
+  - 기타 정보
+  ```java
+  private void printEtc(HttpServletRequest request) { 
+      System.out.println("--- 기타 조회 start ---");
+      System.out.println("[Remote 정보]");
+      System.out.println("request.getRemoteHost() = " + request.getRemoteHost()); // 0:0:0:0:0:0:0:1
+      System.out.println("request.getRemoteAddr() = " + request.getRemoteAddr()); // 0:0:0:0:0:0:0:1
+      System.out.println("request.getRemotePort() = " + request.getRemotePort()); // 54305
+      System.out.println();
+      
+      System.out.println("[Local 정보]");
+      System.out.println("request.getLocalName() = " + request.getLocalName()); // localhost
+      System.out.println("request.getLocalAddr() = " + request.getLocalAddr()); // 0:0:0:0:0:0:0:1
+      System.out.println("request.getLocalPort() = " + request.getLocalPort()); // 8080
+      System.out.println("--- 기타 조회 end ---");
+      System.out.println(); 
+  }
+  ```
+
+### HTTP 요청 데이터 개요
+
+##### 클라이언트에서 서버로 데이터를 전달하는 방법
+- GET - `쿼리 파라미터`
+  - /url`?username=hello&age=20`
+  - 메시지 바디 없이, URL의 쿼리 파라미터에 데이터를 포함해서 전달 
+  - 검색, 필터, 페이징 등에서 많이 사용하는 방식
+  - 쿼리 파라미터는 URL에 ?를 시작으로 보낼 수 있고 추가 파라미터는 &로 구분
+- POST - HTML `Form`
+  - content-type: application/x-www-form-urlencoded
+  - 메시지 바디에 쿼리 파리미터 형식으로 전달 `username=hello&age=20`
+  - 회원 가입, 상품 주문, HTML Form 사용
+- HTTP message `body`에 데이터를 직접 담아서 요청
+  - HTTP API에서 주로 사용, JSON, XML, TEXT
+  - 데이터 형식은 주로 JSON 사용 (POST, PUT, PATCH)
+
+### HTTP 요청 데이터 - GET 쿼리 파라미터
+
+##### 쿼리 파라미터 조회 메서드
+- 쿼리
+  - 메소드: GET
+  - 요청 URL: http://localhost:8080/request-param?username=hello&age=20
+- 쿼리 파라미터 조회 메서드
+```java
+// HttpServletRequest인 request
+String username = request.getParameter("username"); // 단일 파라미터 조회 
+Enumeration<String> parameterNames = request.getParameterNames(); // 파라미터 이름들 모두 조회
+Map<String, String[]> parameterMap = request.getParameterMap(); // 파라미터를 Map 으로 조회
+String[] usernames = request.getParameterValues("username"); // 복수 파라미터 조회
+```
+- 같은 파라미터 이름은 하나인데, 값이 중복인 경우 처리 방법
+  - request.getParameter() 는 하나의 파라미터 이름에 대해서 단 하나의 값만 있을 때 사용해야하고 중복일 때는 request.getParameterValues() 를 사용
+  - 중복인 경우에도 request.getParameter()를 사용하면 getParameterValues()의 첫번째 값을 반환
+
+### HTTP 요청 데이터 - POST HTML Form
+
+##### HTML Form 조회 메소드
+- 쿼리
+  - 메소드: POST
+  - 요청 URL: http://localhost:8080/request-param
+  - content-type: application/x-www-form-urlencoded
+  - message body: username=hello&age=20
+- 폼 데이터 조회 메서드
+```java
+// HttpServletRequest인 request
+String username = request.getParameter("username"); // 단일 파라미터 조회 
+Enumeration<String> parameterNames = request.getParameterNames(); // 파라미터 이름들 모두 조회
+Map<String, String[]> parameterMap = request.getParameterMap(); // 파라미터를 Map 으로 조회
+String[] usernames = request.getParameterValues("username"); // 복수 파라미터 조회
+```
+- request.getParameter() 는 GET URL 쿼리 파라미터 형식도 지원하고, POST HTML Form 형식도 둘 다 지원
+
+### HTTP 요청 데이터 API 메시지 바디 - 단순 텍스트
+
+##### HTTP 메시지 바디의 텍스트 조회 메소드
+- 쿼리
+  - 메소드: POST
+  - 요청 URL: http://localhost:8080/request-body-string
+  - content-type: text/plain
+  - message body: hello
+- 바디 조회 메소드
+```java
+@WebServlet(name = "requestBodyStringServlet", urlPatterns = "/request-body- string")
+public class RequestBodyStringServlet extends HttpServlet {
+       @Override
+      protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        ServletInputStream inputStream = request.getInputStream();
+        String messageBody = StreamUtils.copyToString(inputStream, StandardCharsets.UTF_8);
+        System.out.println("messageBody = " + messageBody); response.getWriter().write("ok");
+      }
+}
+```
+
+### HTTP 요청 데이터 API 메시지 바디 - JSON
+
+##### ##### HTTP 메시지 바디의 JSON 조회 메소드
+- 쿼리
+  - 메소드: POST
+  - 요청 URL: http://localhost:8080/request-body-json
+  - content-type: application/json
+  - message body: {"username": "hello", "age": 20}
+- 바디 조회 메소드
+```java
+@WebServlet(name = "requestBodyJsonServlet", urlPatterns = "/request-body- json")
+public class RequestBodyJsonServlet extends HttpServlet {
+    
+    // JSON 결과를 파싱해서 자바 객체로 변환을 위해서 Jackson, Gson 같은 JSON 변환 라이브러리를 추가해서 사용
+    private ObjectMapper objectMapper = new ObjectMapper();
+    
+    @Override
+    protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException { 
+        ServletInputStream inputStream = request.getInputStream();
+        String messageBody = StreamUtils.copyToString(inputStream, StandardCharsets.UTF_8);
+        System.out.println("messageBody = " + messageBody);
+        HelloData helloData = objectMapper.readValue(messageBody, HelloData.class);
+        System.out.println("helloData.username = " + helloData.getUsername()); 
+        System.out.println("helloData.age = " + helloData.getAge());
+        response.getWriter().write("ok"); 
+    }
+}
+```
+
+### HttpServeltResponse 기본 사용법
+
+- 서블릿 응답 처리 코드
+```java
+@WebServlet(name = "responseHeaderServlet", urlPatterns = "/response-header") 
+public class ResponseHeaderServlet extends HttpServlet {
+    @Override
+    protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException { 
+        
+    //[status-line]
+    response.setStatus(HttpServletResponse.SC_OK); //200
+    
+    //[response-headers]
+    response.setHeader("Content-Type", "text/plain;charset=utf-8");
+    response.setHeader("Cache-Control", "no-cache, no-store, must- revalidate");
+    response.setHeader("Pragma", "no-cache"); response.setHeader("my-header","hello");
+
+    //[Header 편의 메서드] 
+    content(response); 
+    cookie(response); 
+    redirect(response);
+    //[message body]
+    PrintWriter writer = response.getWriter();
+    writer.println("ok");
+    }
+}
+```
+- 편의 메서드
+  - Content 편의 메서드
+  ```java
+  private void content(HttpServletResponse response) {
+    //Content-Type: text/plain;charset=utf-8
+    //Content-Length: 2
+    //response.setHeader("Content-Type", "text/plain;charset=utf-8"); 
+    response.setContentType("text/plain"); response.setCharacterEncoding("utf-8"); 
+    //response.setContentLength(2); //(생략시 자동 생성)
+  }
+  ```
+  - 쿠키 편의 메서드
+  ```java
+  private void cookie(HttpServletResponse response) {
+     //Set-Cookie: myCookie=good; Max-Age=600; 
+     //response.setHeader("Set-Cookie", "myCookie=good; Max-Age=600"); 
+     Cookie cookie = new Cookie("myCookie", "good"); 
+     cookie.setMaxAge(600); //600초
+     response.addCookie(cookie); 
+  }
+  ```
+  - redirect 편의 메서드
+  ```java
+  private void redirect(HttpServletResponse response) throws IOException { 
+      //Status Code 302
+      //Location: /basic/hello-form.html
+      //response.setStatus(HttpServletResponse.SC_FOUND); //302 
+      //response.setHeader("Location", "/basic/hello-form.html"); 
+      response.sendRedirect("/basic/hello-form.html");
+  }
+  ```
+
+### HTTP 응답 데이터 - 단순 텍스트, HTML
+
+##### 단순 텍스트, HTML 응답 메소드
+- 단순 텍스트, HTML 응답 메소드
+```java
+WebServlet(name = "responseHtmlServlet", urlPatterns = "/response-html") public class ResponseHtmlServlet extends HttpServlet {
+    @Override
+    protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+
+        //Content-Type: text/html;charset=utf-8
+        response.setContentType("text/html"); 
+        response.setCharacterEncoding("utf-8");
+
+        PrintWriter writer = response.getWriter(); 
+        writer.println("<html>"); 
+        writer.println("<body>");
+        writer.println(" <div>안녕?</div>"); 
+        writer.println("</body>"); 
+        writer.println("</html>");
+    } 
+}
+```
+
+### HTTP 응답 데이터 API - JSON
+
+##### JSON 응답 메소드
+- JSON 응답 메소드
+```java
+WebServlet(name = "responseJsonServlet", urlPatterns = "/response-json") public class ResponseJsonServlet extends HttpServlet {
+
+    private ObjectMapper objectMapper = new ObjectMapper();
+
+    @Override
+    protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        
+        //Content-Type: application/json
+        response.setHeader("content-type", "application/json"); 
+        response.setCharacterEncoding("utf-8");
+        HelloData data = new HelloData(); data.setUsername("kim");
+        data.setAge(20); 
+        
+        //{"username":"kim","age":20}
+        String result = objectMapper.writeValueAsString(data); 
+        response.getWriter().write(result);
+    }
+}
+```
 
 서블릿, JSP, MVC 패턴
 =======
