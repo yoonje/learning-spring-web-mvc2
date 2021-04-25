@@ -6,7 +6,7 @@ Table of contents
 <!--ts-->
    * [웹 애플리케이션 이해](#웹-애플리케이션-이해)
    * [서블릿](#서블릿)
-   * [서블릿, JSP, MVC 패턴](#서블릿,-JSP,-MVC-패턴)
+   * [서블릿, JSP, MVC 패턴](#서블릿-JSP-MVC-패턴)
    * [MVC 프레임워크 만들기](#MVC-프레임워크-만들기)
    * [스프링 MVC 구조 이해](#스프링-MVC-구조-이해)
    * [스프링 MVC 기본 기능](#스프링-MVC-기본-기능)
@@ -428,16 +428,16 @@ public class ResponseHeaderServlet extends HttpServlet {
   private void content(HttpServletResponse response) {
     //Content-Type: text/plain;charset=utf-8
     //Content-Length: 2
-    //response.setHeader("Content-Type", "text/plain;charset=utf-8"); 
+    response.setHeader("Content-Type", "text/plain;charset=utf-8"); 
     response.setContentType("text/plain"); response.setCharacterEncoding("utf-8"); 
-    //response.setContentLength(2); //(생략시 자동 생성)
+    response.setContentLength(2); //(생략시 자동 생성)
   }
   ```
   - 쿠키 편의 메서드
   ```java
   private void cookie(HttpServletResponse response) {
      //Set-Cookie: myCookie=good; Max-Age=600; 
-     //response.setHeader("Set-Cookie", "myCookie=good; Max-Age=600"); 
+     response.setHeader("Set-Cookie", "myCookie=good; Max-Age=600"); 
      Cookie cookie = new Cookie("myCookie", "good"); 
      cookie.setMaxAge(600); //600초
      response.addCookie(cookie); 
@@ -448,8 +448,8 @@ public class ResponseHeaderServlet extends HttpServlet {
   private void redirect(HttpServletResponse response) throws IOException { 
       //Status Code 302
       //Location: /basic/hello-form.html
-      //response.setStatus(HttpServletResponse.SC_FOUND); //302 
-      //response.setHeader("Location", "/basic/hello-form.html"); 
+      response.setStatus(HttpServletResponse.SC_FOUND); //302 
+      response.setHeader("Location", "/basic/hello-form.html"); 
       response.sendRedirect("/basic/hello-form.html");
   }
   ```
@@ -502,7 +502,7 @@ WebServlet(name = "responseJsonServlet", urlPatterns = "/response-json") public 
 }
 ```
 
-서블릿, JSP, MVC 패턴
+서블릿 JSP MVC 패턴
 =======
 
 ##### 회원 관리 웹 애플리케이션 로직
@@ -727,13 +727,158 @@ for (Member member : members) {
   - JAVA 코드, 데이터를 조회하는 리포지토리 등등 다양한 코드가 모두 JSP에 노출되어 있으며 JSP가 너무 많은 역할을 함 -> `MVC 패턴 필요`
 
 ##### MVC 패턴 - 개요
-
+- MVC 패턴
+  - MVC 패턴은 지금까지 학습한 것 처럼 하나의 서블릿이나, JSP로 처리하던 것을 컨트롤러(Controller)와 뷰(View)라는 영역으로 서로 역할을 나눈 것
+  - 서블릿이나 JSP만으로 비즈니스 로직과 뷰 렌더링까지 모두 처리하게 되면 하나의 코드에서 너무 많은 역할을 하게되고 결과적으로 유지보수가 어려워지기 때문에 생긴 패턴
+  - JSP 같은 뷰 템플릿은 화면을 렌더링 하는데 최적화 되어 있기 때문에 이 부분의 업무만 담당하는 것이 가장 효과적
+  - `컨트롤러`: HTTP 요청을 받아서 파라미터를 검증하고, 비즈니스 로직을 실행하는 곳으로 뷰에 전달할 결과 데이터를 조회해서 모델에 담음
+  - `모델`: 뷰에 출력할 데이터를 담아둔다. 뷰가 필요한 데이터를 모두 모델에 담아서 전달해주는 덕분에 뷰는 비즈니스 로직이나 데이터 접근을 몰라도 되고, 화면을 렌더링 하는 일에 집중할 수 있음
+  - `뷰`: 모델에 담겨있는 데이터를 사용해서 화면을 그리는 일에 집중하는 HTML을 생성하는 부분을 말함
+- 컨트롤러와 비니니스 로직
+  - 컨트롤러에 비즈니스 로직을 둘 수도 있지만, 이렇게 되면 컨트롤러가 너무 많은 역할을 담당하게 되어 일반적으로 `비즈니스 로직은 서비스(Service)`라는 계층을 별도로 만들어서 처리
 
 ##### MVC 패턴 - 적용
+- 회원 등록 폼 컨트롤러
+```java
+WebServlet(name = "mvcMemberFormServlet", urlPatterns = "/servlet-mvc/members/ new-form")
+public class MvcMemberFormServlet extends HttpServlet {
+    @Override
+    protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String viewPath = "/WEB-INF/views/new-form.jsp";
+        RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath); 
+        // 다른 서블릿이나 JSP로 이동할 수 있는 기능으로 redirect와 달라 클라이언트가 알 수 없는 기능
+        dispatcher.forward(request, response); 
+    } 
+}
+```
 
+- 회원 등록 폼 뷰
+```jsp
+<%@ page contentType="text/html;charset=UTF-8" language="java" %> 
+<html>
+<head>
+<meta charset="UTF-8">
+        <title>Title</title>
+</head>
+
+<body>
+<!-- 상대경로 사용, [현재 URL이 속한 계층 경로 + /save] --> 
+    <form action="save" method="post">
+        username: <input type="text" name="username" /> 
+        age: <input type="text" name="age" /> <button type="submit">전송</button>
+    </form>
+</body>
+</html>
+
+```
+
+- 회원 저장 컨트롤러
+```java
+@WebServlet(name = "mvcMemberSaveServlet", urlPatterns = "/servlet-mvc/members/ save")
+public class MvcMemberSaveServlet extends HttpServlet {
+
+    private MemberRepository memberRepository = MemberRepository.getInstance();
+
+    @Override
+    protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String username = request.getParameter("username");
+        int age = Integer.parseInt(request.getParameter("age"));
+        Member member = new Member(username, age); System.out.println("member = " + member); memberRepository.save(member);
+
+    // request는 내부에 데이터 저장소에 Model 데이터를 보관 
+    request.setAttribute("member", member);
+    String viewPath = "/WEB-INF/views/save-result.jsp";
+    RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath); 
+    dispatcher.forward(request, response);
+    } 
+}
+```
+
+- 회원 저장 뷰
+```jsp
+<%@ page contentType="text/html;charset=UTF-8" language="java" %> <html>
+<head>
+<meta charset="UTF-8"> </head>
+
+<body> 성공
+    <ul>
+        <!-- JSP는 ${} 문법으로 request의 attribute에 담긴 데이터를 편리하게 조회 가능 --> 
+        <li>id=${member.id}</li> <li>username=${member.username}</li> <li>age=${member.age}</li>
+    </ul>
+    <a href="/index.html">메인</a>
+</body>
+</html>
+```
+
+- 회원 목록 조회 컨트롤러
+```java
+@WebServlet(name = "mvcMemberListServlet", urlPatterns = "/servlet-mvc/ members")
+public class MvcMemberListServlet extends HttpServlet {
+
+    private MemberRepository memberRepository = MemberRepository.getInstance();
+
+    @Override
+    protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException { 
+        System.out.println("MvcMemberListServlet.service");
+        List<Member> members = memberRepository.findAll(); 
+        request.setAttribute("members", members);
+        String viewPath = "/WEB-INF/views/members.jsp";
+        RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath); 
+        dispatcher.forward(request, response);
+    } 
+}
+```
+- 회원 목록 조회 뷰
+```jsp
+<%@ page contentType="text/html;charset=UTF-8" language="java" %> 
+<!-- <c:forEach>를 사용하기 위해 추가하는 import -->
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%> 
+<html>
+<head>
+<meta charset="UTF-8">
+      <title>Title</title>
+</head>
+<body>
+<a href="/index.html">메인</a>
+  <table>
+      <thead>
+        <th>id</th>
+        <th>username</th>
+        <th>age</th>
+      </thead>
+      
+      <tbody>
+
+      <!-- JSP의 jstl을 통해서 편리하게 데이터 순회 조회 --> 
+      <c:forEach var="item" items="${members}">
+         <tr>
+          <td>${item.id}</td>
+          <td>${item.username}</td>
+          <td>${item.age}</td>
+         </tr>
+      </c:forEach>
+      </tbody>
+
+  </table>
+  </body>
+  </html>
+```
 
 ##### MVC 패턴 - 한계
-
+- 서블릿과 JSP를 활용한 MVC 패턴의 단점
+  - MVC 패턴을 적용한 덕분에 컨트롤러의 역할과 뷰를 렌더링 하는 역할을 명확하게 구분이 되었지만 컨트롤러는 딱 봐도 `중복이 많고, 필요하지 않는 코드가 존재`
+- 서블릿과 JSP를 활용한 MVC 패턴 한계
+  - 포워드 중복
+    - View로 이동하는 항상 중복 호출
+    ```java
+    RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath); 
+    dispatcher.forward(request, response);
+    ``` 
+  - ViewPath에 중복: String viewPath = "/WEB-INF/views/new-form.jsp";같은 가 중복 코드 존재
+  - 사용하지 않는 코드: 파라미터로 받는 HttpServletRequest request, HttpServletResponse response는 사용하지 않을 때가 많음
+  - 공통 처리가 어려움: 컨트롤러에서 공통으로 처리해야 하는 부분이 점점 더 많이 증가하는데, 서드를 항상 호출해야 하고, 실수로 호출하지 않으면 문제가 되고 호출하는 것 자체도 중복
+- 스프링 MVC
+  - `프론트 컨트롤러(Front Controller) 패턴` 구현을 통해서 공통 기능을 처리하는 소위 수문장 역할의 코드를 작성하여 적용
 
 MVC 프레임워크 만들기
 =======
