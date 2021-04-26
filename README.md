@@ -505,7 +505,7 @@ WebServlet(name = "responseJsonServlet", urlPatterns = "/response-json") public 
 서블릿 JSP MVC 패턴
 =======
 
-##### 회원 관리 웹 애플리케이션 로직
+### 회원 관리 웹 애플리케이션 로직
 - 회원 도메인 모델
 ```java
 @Getter @Setter
@@ -557,7 +557,7 @@ public class MemberRepository {
 }
 ```
 
-##### 서블릿으로 회원 관리 웹 애플리케이션 만들기
+### 서블릿으로 회원 관리 웹 애플리케이션 만들기
 - 회원 등록 폼
 ```java
 @WebServlet(name = "memberFormServlet", urlPatterns = "/servlet/members/new- form")
@@ -644,7 +644,7 @@ public class MemberListServlet extends HttpServlet {
 - 서블릿만으로 회원 관리 웹 애프리케이션을 만들었을 때의 문제
   - 자바 코드로 HTML을 만들어 내는 것이 매우 불편하고 특히 HTML 문서에 동적인 변동 부분은 불가능 -> `템플릿 엔진 필요`
 
-##### JSP로 회원 관리 웹 애플리케이션 만들기
+### JSP로 회원 관리 웹 애플리케이션 만들기
 - 회원 등록 폼
 ```jsp
 <%@ page contentType="text/html;charset=UTF-8" language="java" %> <html>
@@ -726,7 +726,7 @@ for (Member member : members) {
 - 서블릿과 JSP으로 회원 관리 웹 애플리케이션을 만들었을 때의 문제
   - JAVA 코드, 데이터를 조회하는 리포지토리 등등 다양한 코드가 모두 JSP에 노출되어 있으며 JSP가 너무 많은 역할을 함 -> `MVC 패턴 필요`
 
-##### MVC 패턴 - 개요
+### MVC 패턴 - 개요
 - MVC 패턴
   - MVC 패턴은 지금까지 학습한 것 처럼 하나의 서블릿이나, JSP로 처리하던 것을 컨트롤러(Controller)와 뷰(View)라는 영역으로 서로 역할을 나눈 것
   - 서블릿이나 JSP만으로 비즈니스 로직과 뷰 렌더링까지 모두 처리하게 되면 하나의 코드에서 너무 많은 역할을 하게되고 결과적으로 유지보수가 어려워지기 때문에 생긴 패턴
@@ -737,7 +737,7 @@ for (Member member : members) {
 - 컨트롤러와 비니니스 로직
   - 컨트롤러에 비즈니스 로직을 둘 수도 있지만, 이렇게 되면 컨트롤러가 너무 많은 역할을 담당하게 되어 일반적으로 `비즈니스 로직은 서비스(Service)`라는 계층을 별도로 만들어서 처리
 
-##### MVC 패턴 - 적용
+### MVC 패턴 - 적용
 - 회원 등록 폼 컨트롤러
 ```java
 WebServlet(name = "mvcMemberFormServlet", urlPatterns = "/servlet-mvc/members/ new-form")
@@ -821,6 +821,8 @@ public class MvcMemberListServlet extends HttpServlet {
     protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException { 
         System.out.println("MvcMemberListServlet.service");
         List<Member> members = memberRepository.findAll(); 
+
+        // request는 내부에 데이터 저장소에 Model 데이터를 보관 
         request.setAttribute("members", members);
         String viewPath = "/WEB-INF/views/members.jsp";
         RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath); 
@@ -864,7 +866,7 @@ public class MvcMemberListServlet extends HttpServlet {
   </html>
 ```
 
-##### MVC 패턴 - 한계
+### MVC 패턴 - 한계
 - 서블릿과 JSP를 활용한 MVC 패턴의 단점
   - MVC 패턴을 적용한 덕분에 컨트롤러의 역할과 뷰를 렌더링 하는 역할을 명확하게 구분이 되었지만 컨트롤러는 딱 봐도 `중복이 많고, 필요하지 않는 코드가 존재`
 - 서블릿과 JSP를 활용한 MVC 패턴 한계
@@ -882,7 +884,413 @@ public class MvcMemberListServlet extends HttpServlet {
 
 MVC 프레임워크 만들기
 =======
+### 프론트 컨트롤러 패턴 소개
 
+###### 프론트 컨트롤러 패턴 특징
+- 프론트 컨트롤러도 서블릿의 하나로 클라이언트의 요청을 받음
+- 프론트 컨트롤러가 요청에 맞는 컨트롤러를 찾아서 호출
+- 프론트 컨트롤러를 제외한 나머지 컨트롤러는 서블릿을 사용하지 않아도 됨
+
+##### 스프링 웹 MVC와 프론트 컨트롤러
+- 스프링 웹 MVC의 DispatcherServlet이 FrontController 패턴으로 구현
+
+### 프론트 컨트롤러 도입 v1
+##### ControllerV1
+- 서블릿과 비슷한 모양의 컨트롤러 인터페이스를 도입
+- 프론트 컨트롤러는 이 인터페이스를 호출해서 구현과 관계없이 로직의 일관성을 가져감
+```java
+public interface ControllerV1 {
+      void process(HttpServletRequest request, HttpServletResponse response)
+  throws ServletException, IOException;
+  }
+```
+
+##### MemberFormControllerV1 - 회원 등록 컨트롤러
+```java
+public class MemberFormControllerV1 implements ControllerV1 {
+
+  @Override
+  public void process(HttpServletRequest request, HttpServletResponse  response) throws ServletException, IOException {
+    
+    String viewPath = "/WEB-INF/views/new-form.jsp";
+    RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath); 
+    dispatcher.forward(request, response);
+  }
+
+}
+```
+
+##### MemberSaveControllerV1 - 회원 저장 컨트롤러
+```java
+public class MemberSaveControllerV1 implements ControllerV1 {
+  
+  private MemberRepository memberRepository = MemberRepository.getInstance();
+
+  Override
+  public void process(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+
+    String username = request.getParameter("username");
+    int age = Integer.parseInt(request.getParameter("age"));
+    Member member = new Member(username, age); memberRepository.save(member);
+    
+    request.setAttribute("member", member);
+    String viewPath = "/WEB-INF/views/save-result.jsp";
+    RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath); 
+    dispatcher.forward(request, response);
+  }
+}
+```
+
+##### MemberListControllerV1 - 회원 목록 컨트롤러
+```java
+public class MemberListControllerV1 implements ControllerV1 {
+  
+  private MemberRepository memberRepository = MemberRepository.getInstance();
+  
+  @Override
+  public void process(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    
+    List<Member> members = memberRepository.findAll(); 
+    request.setAttribute("members", members);
+    String viewPath = "/WEB-INF/views/members.jsp";
+    RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath); 
+    dispatcher.forward(request, response);
+  } 
+}
+```
+##### FrontControllerServletV1 - 프론트 컨트롤러
+```java
+@WebServlet(name = "frontControllerServletV1", urlPatterns = "/front- controller/v1/*")
+public class FrontControllerServletV1 extends HttpServlet {
+
+    private Map<String, ControllerV1> controllerMap = new HashMap<>();
+    
+    public FrontControllerServletV1() { 
+      // key는 매핑 URL, value는 호출될 컨트롤러
+      controllerMap.put("/front-controller/v1/members/new-form", new MemberFormControllerV1()); controllerMap.put("/front-controller/v1/members/save", new MemberSaveControllerV1()); controllerMap.put("/front-controller/v1/members", new MemberListControllerV1());
+    }
+
+    @Override
+    protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException { 
+      System.out.println("FrontControllerServletV1.service");
+
+      // 리퀘스트 url를 얻어옴
+      String requestURI = request.getRequestURI();
+
+      // 리퀘스트 url을 통해서 그에 맞는 컨트롤러를 찾음
+      ControllerV1 controller = controllerMap.get(requestURI); 
+
+      // 컨트롤러가 없는 경우 404
+      if (controller == null) {
+        response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        return; 
+      }
+
+      // 다형성을 통해서 프로세스 처리
+      controller.process(request, response); 
+    }
+}
+```
+
+### View 분리 v2
+
+##### View 분리
+- 아래와 같이 모든 컨트롤러에서 뷰로 이동하는 부분에 중복이 있어서 이를 제거하여 깔끔하게 만들 수 있음
+```java
+String viewPath = "/WEB-INF/views/new-form.jsp";
+RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath); 
+dispatcher.forward(request, response);
+```
+
+##### MyView v2
+- viewPath를 처리하는 데에 특화된 객체 
+```java
+public class MyView {
+
+  private String viewPath;
+
+  public MyView(String viewPath) {
+
+    // ViewPath 처리
+    this.viewPath = viewPath;
+  }
+  
+  public void render(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    
+    // 포워딩 처리
+    RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath);
+    dispatcher.forward(request, response); 
+  }
+}
+```
+
+##### ControllerV2
+```java
+ public interface ControllerV2 {
+      MyView process(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException;
+  }
+```
+
+##### MemberFormControllerV2 - 회원 등록 폼
+```java
+public class MemberFormControllerV2 implements ControllerV2 {
+  
+  @Override
+  public MyView process(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+
+    // 뷰 객체로 뷰 처리
+    return new MyView("/WEB-INF/views/new-form.jsp"); 
+  }
+}
+```
+
+##### MemberSaveControllerV2 - 회원 저장
+```java
+public class MemberSaveControllerV2 implements ControllerV2 {
+  
+  private MemberRepository memberRepository = MemberRepository.getInstance();
+
+  @Override
+  public MyView process(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+
+
+    String username = request.getParameter("username");
+    int age = Integer.parseInt(request.getParameter("age"));
+    Member member = new Member(username, age); memberRepository.save(member);
+    request.setAttribute("member", member);
+
+    // 뷰 객체로 뷰 처리
+    return new MyView("/WEB-INF/views/save-result.jsp");
+  } 
+}
+```
+
+##### MemberListControllerV2 - 회원 목록
+```java
+public class MemberListControllerV2 implements ControllerV2 {
+  
+  
+  private MemberRepository memberRepository = MemberRepository.getInstance();
+  
+  @Override
+  public MyView process(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    
+    List<Member> members = memberRepository.findAll(); 
+    request.setAttribute("members", members);
+    // 뷰 객체로 뷰 처리
+    return new MyView("/WEB-INF/views/members.jsp"); 
+  }
+}
+```
+
+##### FrontControllerServletV2 - 프론트 컨트롤러
+```java
+ @WebServlet(name = "frontControllerServletV2", urlPatterns = "/front- controller/v2/*")
+public class FrontControllerServletV2 extends HttpServlet {
+  
+  private Map<String, ControllerV2> controllerMap = new HashMap<>();
+  
+  public FrontControllerServletV2() { 
+    controllerMap.put("/front-controller/v2/members/new-form", new MemberFormControllerV2()); controllerMap.put("/front-controller/v2/members/save", new MemberSaveControllerV2()); controllerMap.put("/front-controller/v2/members", new MemberListControllerV2());
+  }
+  
+  @Override
+  protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException { 
+
+    String requestURI = request.getRequestURI();
+    ControllerV2 controller = controllerMap.get(requestURI); 
+    
+    if (controller == null) {
+      response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+      return; 
+    }
+
+    // 뷰 객체로 뷰 처리
+    MyView view = controller.process(request, response);
+    view.render(request, response); 
+  }
+}
+```
+
+### Model 추가 v3
+
+##### 서블릿 종속성 제거 및 뷰 이름 중복 제거
+- 컨트롤러 입장에서 HttpServletRequest, HttpServletResponse이 필요 없어서 요청 파라미터 정보는 따로 처리 가능
+- request 객체를 Model로 사용하는 대신에 `별도의 Model 객체를 만들어서 반환`
+- 컨트롤러에서 지정하는 뷰 이름에 중복하므로 `뷰의 논리 이름을 반환`하고, 실제 물리 위치의 이름은 프론트 컨트롤러에서 처리하도록 단순화
+
+##### ModelView v3
+- 서블릿에 종속적인 HttpServletRequest 대신에 Model을 직접 만들고, 추가로 View 이름까지 전달하는 객체를 만들어서 간소화
+```java
+public class ModelView {
+
+    private String viewName
+    // 뷰의 이름과 뷰를 렌더링할 때 필요한 model 객체
+    private Map<String, Object> model = new HashMap<>();
+
+    public ModelView(String viewName) { 
+      this.viewName = viewName;
+    }
+    
+    public String getViewName() {
+      return viewName;
+    }
+
+    public void setViewName(String viewName) { 
+      this.viewName = viewName;
+    }
+    
+    public Map<String, Object> getModel() {
+      return model;
+    }
+
+    public void setModel(Map<String, Object> model) {
+       this.model = model;
+    }
+}
+```
+
+##### ControllerV3
+- 서블릿 기술을 사용하지 않는 컨트롤러 인터페이스 정의
+```java
+public interface ControllerV3 {
+  // HttpServletRequest가 제공하는 파라미터는 프론트 컨트롤러가 paramMap에 담아서 호출
+  // 응답 결과로 뷰 이름과 뷰에 전달할 Model 데이터를 포함하는 ModelView 객체를 반환
+   ModelView process(Map<String, String> paramMap);  
+}
+```
+
+##### MemberFormControllerV3 - 회원 등록 폼
+- ModelView 를 생성할 때 new-form 이라는 view의 논리적인 이름을 지정
+```java
+public class MemberFormControllerV3 implements ControllerV3 {
+  @Override
+  public ModelView process(Map<String, String> paramMap) {
+    return new ModelView("new-form"); 
+  }
+}
+```
+
+##### MemberSaveControllerV3 - 회원 저장
+- 
+```java
+public class MemberSaveControllerV3 implements ControllerV3 {
+
+  private MemberRepository memberRepository = MemberRepository.getInstance();
+      
+  @Override
+  public ModelView process(Map<String, String> paramMap) {
+    
+    String username = paramMap.get("username");
+    int age = Integer.parseInt(paramMap.get("age"));
+    Member member = new Member(username, age); memberRepository.save(member);
+    ModelView mv = new ModelView("save-result"); 
+    mv.getModel().put("member", member);
+    return mv;
+  } 
+}
+
+```
+
+##### MemberListControllerV3 - 회원 목록
+- 
+```java
+public class MemberListControllerV3 implements ControllerV3 {
+
+  private MemberRepository memberRepository = MemberRepository.getInstance();
+    
+  @Override
+  public ModelView process(Map<String, String> paramMap) {
+    List<Member> members = memberRepository.findAll(); 
+    ModelView mv = new ModelView("members");
+    mv.getModel().put("members", members); return mv;
+  } 
+}
+```
+##### FrontControllerServletV3
+- 다른 컨트롤러에서 서블릿 기능을 제외하고 FrontControllerServletV3에서 처리
+```java
+@WebServlet(name = "frontControllerServletV3", urlPatterns = "/front- controller/v3/*")
+public class FrontControllerServletV3 extends HttpServlet {
+  
+      private Map<String, ControllerV3> controllerMap = new HashMap<>();
+      
+      public FrontControllerServletV3() { 
+        controllerMap.put("/front-controller/v3/members/new-form", new MemberFormControllerV3()); controllerMap.put("/front-controller/v3/members/save", new MemberSaveControllerV3()); controllerMap.put("/front-controller/v3/members", new MemberListControllerV3());
+    }
+    
+    @Override
+    protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException { 
+
+      String requestURI = request.getRequestURI();
+      ControllerV3 controller = controllerMap.get(requestURI); 
+      
+      if (controller == null) {
+        response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        return; 
+      }
+      
+      // 모든 전달 받은 파라미터를 처리하고 저장하는 paramMap
+      Map<String, String> paramMap = createParamMap(request);
+
+      // paramMap에서 처리를 통해 ModelView를 생성
+      ModelView mv = controller.process(paramMap);
+
+      // ModelView를에서 뷰 이름을 얻어옴
+      String viewName = mv.getViewName();
+      
+      // 뷰 이름을 통해서 리졸빙
+      MyView view = viewResolver(viewName); 
+
+      // 랜더링
+      view.render(mv.getModel(), request, response);
+    }
+
+    private Map<String, String> createParamMap(HttpServletRequest request) {
+      Map<String, String> paramMap = new HashMap<>();
+      request.getParameterNames().asIterator() 
+             .forEachRemaining(
+               paramName -> paramMap.put(paramName, request.getParameter(paramName))
+              ); 
+      return paramMap;
+    }
+    
+    private MyView viewResolver(String viewName) {
+      // 컨트롤러가 반환한 논리 뷰 이름을 실제 물리 뷰 경로로 변경하고  MyView 객체를 반환
+      return new MyView("/WEB-INF/views/" + viewName + ".jsp");
+    } 
+}
+```
+
+##### MyView v3
+```java
+public class MyView {
+
+    private String viewPath;
+
+    public MyView(String viewPath) { 
+      this.viewPath = viewPath;
+    }
+    
+    public void render(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+      RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath);
+      dispatcher.forward(request, response); 
+    }
+    
+    public void render(Map<String, Object> model, HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+      modelToRequestAttribute(model, request);
+      RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath); 
+      dispatcher.forward(request, response);
+    }
+
+    private void modelToRequestAttribute(Map<String, Object> model, HttpServletRequest request) {
+      model.forEach((key, value) -> request.setAttribute(key, value)); 
+    }
+}
+```
+### 단순하고 실용적인 컨트롤러 v4
+
+### 유연한 컨트롤러 v5
 
 스프링 MVC 구조 이해
 =======
