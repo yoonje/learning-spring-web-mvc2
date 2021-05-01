@@ -1570,6 +1570,178 @@ public class FrontControllerServletV5 extends HttpServlet {
 스프링 MVC 구조 이해
 =======
 
+### 스프링 MVC 전체 구조
+
+##### 직접 만든 프레임워크와 스프링 MVC 비교
+<img width="892" alt="스크린샷 2021-05-01 오후 2 38 03" src="https://user-images.githubusercontent.com/38535571/116772560-e5a5f700-aa8a-11eb-8500-4aa0b2b83e94.png">
+
+- FrontController <-> DispatcherServlet 
+- handlerMappingMap <-> HandlerMapping 
+- MyHandlerAdapter <-> HandlerAdapter 
+- ModelView <-> ModelAndView
+- viewResolver <-> ViewResolver
+- MyView <-> View
+
+##### DispatcherServlet 구조 살펴보기
+- DispacherServlet
+  - 스프링 MVC의 프론트 컨트롤러가 디스패처 서블릿
+  - DispatcherServlet -> FrameworkServlet -> HttpServletBean -> HttpServlet 의 상속 관계를 갖음
+- DispacherServlet 서블릿 등록
+  - 스프링 부트는 DispacherServlet을 서블릿으로 자동으로 등록하면서 모든 경로( urlPatterns="/" )에 대해서 매핑
+- 요청 흐름
+  - 서블릿이 호출되면 HttpServlet이 제공하는 serivce()가 호출 (FrameworkServlet.service())
+  - `DispacherServlet.doDispatch() 가 호출`
+- doDispatch 내부 흐름
+```java
+protected void doDispatch(HttpServletRequest request, HttpServletResponse
+  response) throws Exception {
+
+    HttpServletRequest processedRequest = request;
+    HandlerExecutionChain mappedHandler = null;
+    ModelAndView mv = null;
+    
+    // 1. 핸들러 조회
+    mappedHandler = getHandler(processedRequest); 
+    if (mappedHandler == null) {
+        noHandlerFound(processedRequest, response);
+        return;
+    }
+
+    //2.핸들러 어댑터 조회-핸들러를 처리할 수 있는 어댑터
+    HandlerAdapter ha = getHandlerAdapter(mappedHandler.getHandler());
+
+    // 3. 핸들러 어댑터 실행 -> 4. 핸들러 어댑터를 통해 핸들러 실행 -> 5. ModelAndView 반환 
+    mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
+
+    // 6. 뷰 리졸버를 통해서 뷰 찾기 -> 7.View 반환 -> 8. 뷰 렌더링
+    processDispatchResult(processedRequest, response, mappedHandler, mv, dispatchException);
+}
+
+private void processDispatchResult(HttpServletRequest request, HttpServletResponse response, HandlerExecutionChain mappedHandler, ModelAndView mv, Exception exception) throws Exception {
+
+  // 렌더링 호출
+  render(mv, request, response);
+}
+
+protected void render(ModelAndView mv, HttpServletRequest request, HttpServletResponse response) throws Exception {
+  View view;
+  String viewName = mv.getViewName(); 
+  
+  // 뷰 리졸버를 통해서 뷰 찾기 및 View 반환
+  view = resolveViewName(viewName, mv.getModelInternal(), locale, request);
+  // 뷰 렌더링
+  view.render(mv.getModelInternal(), request, response); 
+}
+```
+- 동작 순서
+```
+1. 핸들러 조회: 핸들러 매핑을 통해 요청 URL에 매핑된 핸들러(컨트롤러)를 조회한다.
+2. 핸들러 어댑터 조회: 핸들러를 실행할 수 있는 핸들러 어댑터를 조회한다.
+3. 핸들러 어댑터 실행: 핸들러 어댑터를 실행한다.
+4. 핸들러 실행: 핸들러 어댑터가 실제 핸들러를 실행한다.
+5. ModelAndView 반환: 핸들러 어댑터는 핸들러가 반환하는 정보를 ModelAndView로 변환해서
+반환한다.
+6. viewResolver 호출: 뷰 리졸버를 찾고 실행한다.
+JSP의 경우: InternalResourceViewResolver 가 자동 등록되고, 사용된다.
+7. View반환:뷰리졸버는뷰의논리이름을물리이름으로바꾸고,렌더링역할을담당하는뷰객체를
+반환한다.
+JSP의 경우 InternalResourceView(JstlView) 를 반환하는데, 내부에 forward() 로직이 있다.
+8. 뷰렌더링:뷰를통해서뷰를렌더링한다.
+```
+
+##### DispatcherServlet 관련 주요 인터페이스 살펴보기
+- DispatcherServlet 코드의 변경 없이, 원하는 기능을 변경하거나 확장할 수 있음
+- 주요 인터페이스 목록
+  - 핸들러 매핑: org.springframework.web.servlet.HandlerMapping
+  - 핸들러 어댑터: org.springframework.web.servlet.HandlerAdapter
+  - 뷰 리졸버: org.springframework.web.servlet.ViewResolver
+  - 뷰: org.springframework.web.servlet.View
+
+### 핸들러 매핑과 핸들러 어댑터
+
+##### 현재 범용적으로 사용되는 스프링 컨트롤러 인터페이스 HttpRequestHandler와 사용자 정의 MyHttpRequestHandler
+- org.springframework.web.HttpRequestHandler
+```java
+ public interface HttpRequestHandler {
+   void handleRequest(HttpServletRequest request, HttpServletResponse response)
+   throws ServletException, IOException;
+}
+```
+- MyHttpRequestHandler
+```java
+//  /springmvc/request-handler 라는 이름의 스프링 빈으로 등록
+@Component("/springmvc/request-handler")
+public class MyHttpRequestHandler implements HttpRequestHandler {
+
+    @Override
+    public void handleRequest(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+      System.out.println("MyHttpRequestHandler.handleRequest"); 
+    }
+}
+```
+
+
+##### 사용자 정의 컨트롤러를 호출하는 방법
+- HandlerMapping(핸들러 매핑)
+  - 핸들러 매핑에서 이 컨트롤러를 찾을 수 있어야 함
+  - 예) 스프링 빈의 이름으로 핸들러를 찾을 수 있는 핸들러 매핑이 필요
+- HandlerAdapter(핸들러 어댑터)
+  - 핸들러 매핑을 통해서 찾은 핸들러를 실행할 수 있는 핸들러 어댑터가 필요
+  - 예) HttpRequestHandler 인터페이스를 실행할 수 있는 핸들러 어댑터를 찾고 실행
+
+##### 스프링 부트가 자주 등록하는 핸들러 매핑과 핸들러 어댑터
+- HandlerMapping
+  - `0 = RequestMappingHandlerMapping : 애노테이션 기반의 컨트롤러인 @RequestMapping에서 사용`
+  - 1 = BeanNameUrlHandlerMapping : 스프링 빈의 이름으로 핸들러를 찾음
+- HandlerAdapter
+  - `0 = RequestMappingHandlerAdapter : 애노테이션 기반의 컨트롤러인 @RequestMapping에서 사용`
+  - 1 = HttpRequestHandlerAdapter : HttpRequestHandler 처리
+  - 2 = SimpleControllerHandlerAdapter : Controller 인터페이스(애노테이션X, 과거에 사용) 처리
+
+##### 호출 순서 정리
+1. 핸들러 매핑으로 핸들러 조회
+  - HandlerMapping 을 순서대로 실행해서, 핸들러를 찾음
+  - 빈 이름으로 핸들러를 찾아야하기 때문에 이름 그대로 빈 이름으로 핸들러를찾아주는 BeanNameUrlHandlerMapping가 실행에 성공하고 `핸들러인 MyHttpRequestHandler 반환`
+2. 핸들러 어댑터 조회
+  - HandlerAdapter 의 supports() 를 순서대로 호출
+  - `HttpRequestHandlerAdapter가 HttpRequestHandler 인터페이스를 지원`하므로 대상이 됨
+3. 핸들러 어댑터 실행
+  - 디스패처 서블릿이 조회한 HttpRequestHandlerAdapter 를 실행하면서 핸들러 정보도 함께 넘겨줌
+  - `HttpRequestHandlerAdapter는 핸들러인 MyHttpRequestHandler를 내부에서 실행하고, 그 결과를 반환`
+
+### 뷰 리졸버
+
+##### 현재 범용적으로 사용되는 스프링 뷰 리졸버 인터페이스 InternalResourceViewResolver
+- 스프링 부트는 InternalResourceViewResolver 라는 뷰 리졸버를 자동으로 등록하는데, 이때 application.properties 에 등록한 spring.mvc.view.prefix , spring.mvc.view.suffix 설정 정보를 사용해서 등록
+
+##### 스프링 부트가 자동 등록하는 뷰 리졸버
+- ViewResolver
+  - 1 = BeanNameViewResolver : 빈 이름으로 뷰를 찾아서 반환 (예: 엑셀 파일 생성 기능에 사용)
+  - `2 = InternalResourceViewResolver : JSP를 처리할 수 있는 뷰를 반환`
+  - 참고) ThymeleafViewResolver: Thymeleaf 뷰 템플릿을 사용
+
+
+##### 호출 순서 정리
+1. 핸들러 어댑터 호출
+2. ViewResolver 호출
+  - 사용자가 넘긴 뷰 이름으로 viewResolver를 순서대로 호출
+  - BeanNameViewResolver는 사용자가 넘긴 뷰 이름의 스프링 빈으로 등록된 뷰를 찾아야 하는데 없음
+  - InternalResourceViewResolver가 호출
+3. InternalResourceViewResolver가 InternalResourceView 를 반환
+  -  InternalResourceView는 JSP처럼 forward()를 호출해서 처리할 수 있는 경우에 사용
+4. view.render()가 호출되고 InternalResourceView 는 forward()를 사용해서 JSP를 실행
+
+
+### 스프링 MVC 시작하기
+
+#####
+
+### 스프링 MVC 컨트롤러 통합
+
+#####
+
+### 스프링 MVC 실용적인 방식
+
 스프링 MVC 기본 기능
 =======
 
