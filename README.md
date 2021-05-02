@@ -1183,7 +1183,10 @@ public class MemberSaveControllerV3 implements ControllerV3 {
     
     String username = paramMap.get("username");
     int age = Integer.parseInt(paramMap.get("age"));
-    Member member = new Member(username, age); memberRepository.save(member);
+    
+    Member member = new Member(username, age); 
+    memberRepository.save(member);
+    
     ModelView mv = new ModelView("save-result"); 
     mv.getModel().put("member", member);
     return mv;
@@ -1203,7 +1206,8 @@ public class MemberListControllerV3 implements ControllerV3 {
   public ModelView process(Map<String, String> paramMap) {
     List<Member> members = memberRepository.findAll(); 
     ModelView mv = new ModelView("members");
-    mv.getModel().put("members", members); return mv;
+    mv.getModel().put("members", members); 
+    return mv;
   } 
 }
 ```
@@ -1213,9 +1217,9 @@ public class MemberListControllerV3 implements ControllerV3 {
 @WebServlet(name = "frontControllerServletV3", urlPatterns = "/front- controller/v3/*")
 public class FrontControllerServletV3 extends HttpServlet {
   
-      private Map<String, ControllerV3> controllerMap = new HashMap<>();
+    private Map<String, ControllerV3> controllerMap = new HashMap<>();
       
-      public FrontControllerServletV3() { 
+    public FrontControllerServletV3() { 
         controllerMap.put("/front-controller/v3/members/new-form", new MemberFormControllerV3()); controllerMap.put("/front-controller/v3/members/save", new MemberSaveControllerV3()); controllerMap.put("/front-controller/v3/members", new MemberListControllerV3());
     }
     
@@ -1734,13 +1738,152 @@ public class MyHttpRequestHandler implements HttpRequestHandler {
 
 ### 스프링 MVC 시작하기
 
-#####
+##### @RequestMapping
+- 스프링은 애노테이션을 활용한 매우 유연하고, 실용적인 컨트롤러를 만들었는데 이것이 바로 `@RequestMapping 애노테이션`을 사용하는 컨트롤러
+- 메서드 단위로 어노테이션을 적용하여 매우 편리
+- 가장 우선순위가 높은 핸들러 매핑과 핸들러 어댑터는 @RequestMapping 기반의 RequestMappingHandlerMapping, RequestMappingHandlerAdapter
+- SpringMemberFormControllerV1
+```java
+// 스프링이 자동으로 스프링 빈으로 등록하게 하는 @Controller 
+// RequestMappingHandlerMapping 은 스프링 빈 중에서 @RequestMapping 또는 @Controller 가 클래스 레벨에 붙어 있는 경우에 매핑 정보로 인식
+@Controller
+public class SpringMemberFormControllerV1 {
+
+  // 요청 정보를 매핑, URL이 호출되면 이 메서드가 호출됨 (메서드의 이름은 임의로 지으면 됨)
+  @RequestMapping("/springmvc/v1/members/new-form") 
+  public ModelAndView process() {
+
+    // 모델과 뷰 정보를 담아서 반환
+    return new ModelAndView("new-form"); 
+  }
+}
+```
+- SpringMemberSaveControllerV1 - 회원 저장
+```java
+@Controller
+public class SpringMemberSaveControllerV1 {
+  
+  private MemberRepository memberRepository = MemberRepository.getInstance();
+  
+  @RequestMapping("/springmvc/v1/members/save")
+  public ModelAndView process(HttpServletRequest request, HttpServletResponse response) {
+    String username = request.getParameter("username");
+    int age = Integer.parseInt(request.getParameter("age"));
+ 
+    Member member = new Member(username, age);
+
+    System.out.println("member = " + member); 
+    memberRepository.save(member);
+
+    // 스프링이 제공하는 ModelAndView 를 통해 Model 데이터를 추가할 때는 addObject() 를 사용, 데이터는 이후 뷰를 렌더링 할 때 사용
+    ModelAndView mv = new ModelAndView("save-result"); 
+    mv.addObject("member", member);
+    return mv;
+  } 
+}
+```
+- SpringMemberListControllerV1 - 회원 목록
+```java
+@Controller
+public class SpringMemberListControllerV1 {
+
+  private MemberRepository memberRepository = MemberRepository.getInstance();
+      
+  @RequestMapping("/springmvc/v1/members")
+  public ModelAndView process() {
+
+    List<Member> members = memberRepository.findAll();
+    ModelAndView mv = new ModelAndView("members"); 
+    mv.addObject("members", members);
+    return mv; 
+  }
+}
+```
 
 ### 스프링 MVC 컨트롤러 통합
 
-#####
+##### SpringMemberControllerV2
+- 클래스 레벨과 메서드 레벨을 분리하여 url path를 통합하여 컨트롤러를 통합할 수 있음
+- 클래스 레벨 @RequestMapping("/springmvc/v2/members")
+  - 메서드 레벨 @RequestMapping("/new-form") /springmvc/v2/members/new-form 
+  - 메서드 레벨 @RequestMapping("/save") /springmvc/v2/members/save
+  - 메서드 레벨 @RequestMapping /springmvc/v2/members
+```java
+/**
+* 클래스 단위->메서드 단위
+* @RequestMapping 클래스 레벨과 메서드 레벨 조합 
+*/
+@Controller
+// 클래스 레벨에 다음과 같이 @RequestMapping 을 두면 메서드 레벨과 조합
+@RequestMapping("/springmvc/v2/members")
+public class SpringMemberControllerV2 {
 
+   private MemberRepository memberRepository = MemberRepository.getInstance();
+   
+   @RequestMapping("/new-form") 
+   public ModelAndView newForm() {
+     return new ModelAndView("new-form"); 
+   }
+      
+    @RequestMapping("/save")
+    public ModelAndView save(HttpServletRequest request, HttpServletResponse response) {
+      String username = request.getParameter("username");
+      int age = Integer.parseInt(request.getParameter("age"));
+      Member member = new Member(username, age); memberRepository.save(member);
+      ModelAndView mav = new ModelAndView("save-result"); mav.addObject("member", member);
+      return mav;
+    }
+     
+    @RequestMapping
+    public ModelAndView members() {
+      List<Member> members = memberRepository.findAll();
+      ModelAndView mav = new ModelAndView("members"); 
+      mav.addObject("members", members);
+      return mav;
+    } 
+}
+```
 ### 스프링 MVC 실용적인 방식
+
+##### SpringMemberControllerV3
+- ModelView를 개발자가 직접 생성해서 반환했기 때문에 불편하므로 Model을 파라미터로 받고 String을 반환하는 방식으로 처리가 가능
+- DispatcherServlet이 제공하는 기능을 총해서 서블릿을 코드에서 지울 수 있음
+- HTTP 메서드를 구체적으로 구분하는 것을 어노테이션으로 처리할 수 있음
+```java
+/**
+* v3
+* Model 도입
+* ViewName 직접 반환
+* @RequestParam 사용
+* @RequestMapping -> @GetMapping, @PostMapping */
+@Controller
+@RequestMapping("/springmvc/v3/members")
+public class SpringMemberControllerV3 {
+
+  private MemberRepository memberRepository = MemberRepository.getInstance();
+
+  @GetMapping("/new-form") 
+  public String newForm() {
+    return "new-form"; 
+  }
+  
+  @PostMapping("/save")
+  public String save(@RequestParam("username") String username, @RequestParam("age") int age, Model model) {
+    
+    Member member = new Member(username, age); 
+    memberRepository.save(member);
+    model.addAttribute("member", member); 
+    return "save-result";
+  }
+      
+  @GetMapping
+  public String members(Model model) {
+    List<Member> members = memberRepository.findAll(); 
+    model.addAttribute("members", members);
+    return "members";
+  } 
+}
+```
 
 스프링 MVC 기본 기능
 =======
