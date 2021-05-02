@@ -1847,7 +1847,7 @@ public class SpringMemberControllerV2 {
 
 ##### SpringMemberControllerV3
 - ModelView를 개발자가 직접 생성해서 반환했기 때문에 불편하므로 Model을 파라미터로 받고 String을 반환하는 방식으로 처리가 가능
-- DispatcherServlet이 제공하는 기능을 총해서 서블릿을 코드에서 지울 수 있음
+- DispatcherServlet이 제공하는 공통 기능이 있어서 서블릿을 코드에서 컨트롤러 코드에서 지울 수 있음
 - HTTP 메서드를 구체적으로 구분하는 것을 어노테이션으로 처리할 수 있음
 ```java
 /**
