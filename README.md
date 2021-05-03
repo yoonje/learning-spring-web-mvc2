@@ -1604,7 +1604,7 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse
     HandlerExecutionChain mappedHandler = null;
     ModelAndView mv = null;
     
-    // 1. 핸들러 조회
+    // 1.핸들러 조회
     mappedHandler = getHandler(processedRequest); 
     if (mappedHandler == null) {
         noHandlerFound(processedRequest, response);
@@ -1614,10 +1614,10 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse
     //2.핸들러 어댑터 조회-핸들러를 처리할 수 있는 어댑터
     HandlerAdapter ha = getHandlerAdapter(mappedHandler.getHandler());
 
-    // 3. 핸들러 어댑터 실행 -> 4. 핸들러 어댑터를 통해 핸들러 실행 -> 5. ModelAndView 반환 
+    // 3.핸들러 어댑터 실행 -> 4.핸들러 어댑터를 통해 핸들러 실행 -> 5.ModelAndView 반환 
     mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
 
-    // 6. 뷰 리졸버를 통해서 뷰 찾기 -> 7.View 반환 -> 8. 뷰 렌더링
+    // 6.뷰 리졸버를 통해서 뷰 찾기 -> 7.View 반환 -> 8.뷰 렌더링
     processDispatchResult(processedRequest, response, mappedHandler, mv, dispatchException);
 }
 
@@ -1887,6 +1887,89 @@ public class SpringMemberControllerV3 {
 
 스프링 MVC 기본 기능
 =======
+
+### 스프링 MVC 기본 기능 - 로깅
+
+##### 로깅 간단히 알아보기
+- 운영 시스템에서는 System.out.println() 같은 시스템 콘솔을 사용해서 필요한 정보를 출력하지 않고, 별도의 로깅 라이브러리를 사용해서 로그를 출력
+- 쓰레드 정보, 클래스 이름 같은 부가 정보를 함께 볼 수 있고, 출력 모양을 조정이 가능
+- 로그 레벨에 따라 개발 서버에서는 모든 로그를 출력하고, 운영서버에서는 출력하지 않는 등 로그를 상황에 맞게 조절 가능
+- 파일이나 네트워크 등, 로그를 별도의 위치에 남길 수 있음
+- 성능도 일반 System.out 보다 좋음
+
+##### 로깅 라이브러리
+- 스프링 부트 라이브러리를 사용하면 스프링 부트 로깅 라이브러리(spring-boot-starter-logging)가 함께 포함
+  - SLF4J(인터페이스): Logback, Log4J, Log4J2 등등 수 많은 라이브러리를 통합해서 `인터페이스`로 제공하는 것
+  - Logback(구현체)
+- 로그 선언
+```java
+// 방법1
+private Logger log = LoggerFactory.getLogger(getClass());
+// 방법2
+private static final Logger log = LoggerFactory.getLogger(클래스이름.class)
+// 방법3
+@Slf4j
+```
+- 로그 호출
+```java
+// 5단계의 로깅 레벨 선택 가능(TRACE > DEBUG > INFO > WARN > ERROR)
+log.trace("trace log={}", name); 
+log.debug("debug log={}", name); 
+log.info(" info log={}", name); 
+log.warn(" warn log={}", name); 
+log.error("error log={}", name);
+```
+- 로그 레벨 설정(application.properties)
+```yml
+# 전체 로그 레벨 설정(기본 info) 
+logging.level.root=warn
+
+# hello.springmvc 패키지와 그 하위 로그 레벨 설정 
+logging.level.hello.springmvc=debug
+```
+
+##### 올바른 로그 사용법
+- log.debug("data="+data)
+  - 로그 출력 레벨을 info로 설정해도 해당 코드에 있는 "data="+data가 실제 실행이 되어 결과적으로 문자 더하기 연산이 발생
+- log.debug("data={}", data)
+  - 로그 출력 레벨을 info로 설정하면 아무일도 발생하지 않아서 앞과 같은 의미없는 연산이 발생하지 않음
+
+### 스프링 MVC 기본 기능 - 요청 매핑
+
+#####
+
+### 스프링 MVC 기본 기능 - 요청 매핑 API 예시
+
+#####
+
+### 스프링 MVC 기본 기능 - HTTP 요청 
+
+#####
+
+### 스프링 MVC 기본 기능 - HTTP 요청 파라미터
+
+#####
+
+### 스프링 MVC 기본 기능 - HTTP 요청 메시지
+
+#####
+
+
+### 스프링 MVC 기본 기능 - HTTP 응답 메시지
+
+#####
+
+### 스프링 MVC 기본 기능 - HTTP 응답
+
+#####
+
+### 스프링 MVC 기본 기능 - HTTP 메시지 컨버터
+
+#####
+
+### 스프링 MVC 기본 기능 - 요청 매핑 헨들러 어뎁터 구조
+
+#####
 
 스프링 MVC 웹 페이지 만들기
 =======
