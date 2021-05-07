@@ -368,7 +368,7 @@ public class RequestBodyStringServlet extends HttpServlet {
 
 ### HTTP 요청 데이터 API 메시지 바디 - JSON
 
-##### ##### HTTP 메시지 바디의 JSON 조회 메소드
+##### HTTP 메시지 바디의 JSON 조회 메소드
 - 쿼리
   - 메소드: POST
   - 요청 URL: http://localhost:8080/request-body-json
@@ -2446,10 +2446,6 @@ public HelloData requestBodyJsonV5(@RequestBody HelloData data) {
   return data;
 }
 ```
-
-### 스프링 MVC 기본 기능 - HTTP 응답 메시지
-
-#####
 
 ### 스프링 MVC 기본 기능 - HTTP 응답
 
