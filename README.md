@@ -10,7 +10,6 @@ Table of contents
    * [MVC 프레임워크 만들기](#MVC-프레임워크-만들기)
    * [스프링 MVC 구조 이해](#스프링-MVC-구조-이해)
    * [스프링 MVC 기본 기능](#스프링-MVC-기본-기능)
-   * [스프링 MVC 웹 페이지 만들기](#스프링-MVC-웹-페이지-만들기)
 <!--te-->
 
 웹 애플리케이션 이해
@@ -2168,9 +2167,9 @@ public class RequestHeaderController {
     - content-type: application/x-www-form-urlencoded
     - 메시지 바디에 쿼리 파리미터 형식으로 전달 
     - 예) 회원 가입, 상품 주문, HTML Form 사용
-  - HTTP message body에 데이터를 직접 담아서 요청 HTTP API에서 주로 사용, JSON, XML, TEXT
-  - 데이터 형식은 주로 JSON 사용
-  - POST, PUT, PATCH
+  - HTTP message body에 데이터를 직접 담아서 요청 HTTP API에서 주로 사용
+    - 데이터 형식은 주로 JSON 사용
+    - POST, PUT, PATCH
 
 ##### HTTP 요청 파라미터 - @RequestParam
 - @RequestParam
@@ -2449,15 +2448,209 @@ public HelloData requestBodyJsonV5(@RequestBody HelloData data) {
 
 ### 스프링 MVC 기본 기능 - HTTP 응답
 
-#####
+##### 정적 리소스, 뷰 템플릿
+- 서버에서 클라이언트로 응답 데이터를 전달할 때는 주로 다음 3가지 방법
+  - 정적 리소스: 정적인 HTML, css, js 제공
+  - 뷰 템플릿 사용: 동적인 HTML을 제공
+  - HTTP 메시지 사용: HTTP 메시지 바디에 JSON 같은 형식으로 데이터를 실어 보냄
+- `정적 리소스`: 스프링 부트는 클래스패스의 특정 디렉토리에 있는 정적 리소스를 제공
+  - 경로: /static, /public, /resources, /META-INF/resource
+  - src/main/resources 는 리소스를 보관하는 곳이고, 또 클래스패스의 시작 경로
+- `뷰 템플릿`: 뷰 템플릿을 거쳐서 HTML이 생성되고, 뷰가 응답을 만들어서 전달
+  - 경로 src/main/resources/templates
+```html
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+</head>
+  <body>
+  <p th:text="${data}">empty</p>
+  </body>
+</html>
+```
+```java
+@Controller
+public class ResponseViewController {
+
+	@RequestMapping("/response-view-v1")
+	public ModelAndView responseViewV1() {
+		ModelAndView mav = new ModelAndView("response/hello").addObject("data", "hello!");
+		return mav;
+	}
+
+	/**
+	 * String을 반환하는 경우 @ResponseBody 가 없으면 response/hello 로 뷰 리졸버가 실행되어서 뷰를 찾고 렌더링
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping("/response-view-v2")
+	public String responseViewV2(Model model) {
+		model.addAttribute("data", "hello!!");
+		return "response/hello";
+	}
+
+	/**
+	 * Void를 반환하는 경우 @Controller가 없고 HTTP 바디가 없으면 요청 URL을 참고해서 논리 뷰 이름으로 사용 (권장되지 않는 방법)
+	 * @param model
+	 */  
+	@RequestMapping("/response/hello")
+	public void responseViewV3(Model model) {
+		model.addAttribute("data", "hello!!");
+	}
+}
+```
+- `HTTP 메시지`
+  - ResponseBody , HttpEntity 를 사용하면, 뷰 템플릿을 사용하는 것이 아니라, HTTP 메시지 바디에 직접 응답 데이터를 출력
+
+##### HTTP 응답 API와 응답 메시지(Body)
+- HTTP API를 제공하는 경우에는 HTML이 아니라 데이터를 전달해야 하므로, HTTP 메시지 바디에 JSON 같은 형식으로 데이터를 실어 보냄
+- @ResponseBody + @Controller -> @RestController
+```java
+@Slf4j
+@Controller
+//@RestController
+public class ResponseBodyController {
+
+	@GetMapping("/response-body-string-v1")
+	public void responseBodyV1(HttpServletResponse response) throws IOException {
+		response.getWriter().write("ok");
+	}
+
+	/**
+	 * HttpEntity, ResponseEntity(Http Status 추가)
+	 * @return
+	 */
+	@GetMapping("/response-body-string-v2")
+	public ResponseEntity<String> responseBodyV2() {
+		return new ResponseEntity<>("ok", HttpStatus.OK);
+	}
+
+	/**
+	 * String 반환을 문자열 리턴
+	 * @return
+	 */
+	@ResponseBody
+	@GetMapping("/response-body-string-v3")
+	public String responseBodyV3() {
+		return "ok";
+	}
+
+	/**
+	 * ResponseEntity에 HelloData가 들어감
+	 * @return
+	 */
+	@GetMapping("/response-body-json-v1")
+	public ResponseEntity<HelloData> responseBodyJsonV1() {
+		HelloData helloData = new HelloData();
+		helloData.setUsername("userA");
+		helloData.setAge(20);
+		return new ResponseEntity<>(helloData, HttpStatus.OK);
+	}
+
+	/**
+	 * 어노테이션을 보고 ResponseEntity에 자동으로 helloData가 들어감
+	 * @return
+	 */
+	@ResponseStatus(HttpStatus.OK)
+	@ResponseBody
+	@GetMapping("/response-body-json-v2")
+	public HelloData responseBodyJsonV2() {
+		HelloData helloData = new HelloData();
+		helloData.setUsername("userA");
+		helloData.setAge(20);
+		return helloData;
+	}
+}
+```
 
 ### 스프링 MVC 기본 기능 - HTTP 메시지 컨버터
 
-#####
+##### @ResponseBody
+<img width="819" alt="스크린샷 2021-05-08 오후 11 28 01" src="https://user-images.githubusercontent.com/38535571/117542803-0ce56100-b055-11eb-9032-60b6c897559e.png">
+
+- HTTP API처럼 JSON 데이터를 `HTTP 메시지 바디에서 직접 읽거나 쓰는 경우` HTTP 메시지 컨버터를 사용
+- viewResolver 대신에 `HttpMessageConverter`가 동작
+- `HttpMessageConverter`
+  - 기본 바이트: ByteArrayHttpMessageConverter (0순위 체크)
+  - 기본 객체처리: MappingJackson2HttpMessageConverter (1순위 체크)
+  - 기본 문자처리: StringHttpMessageConverter (2순위 체크)
+  - byte 처리 등등 기타 여러 HttpMessageConverter가 기본으로 등록되어 있음
+- `HTTP Accept 해더와 서버의 컨트롤러 반환 타입 정보를` 조합해서 HttpMessageConverter가 선택
+
+##### Spring에서 제공하는 주요 메시지 컨버터
+- `ByteArrayHttpMessageConverter`: byte[] 데이터를 처리
+  - 클래스 타입: byte[] , 미디어타입: */* ,
+  - 요청 예) @RequestBody byte[] data
+  - 응답 예) @ResponseBody return byte[], 미디어타입: application/octet-stream
+- `MappingJackson2HttpMessageConverter`: application/json
+  - 클래스 타입: 객체 또는 HashMap, 미디어타입: application/json 
+  - 요청 예) @RequestBody HelloData data
+  - 응답 예) @ResponseBody return helloData, 미디어타입: application/json 
+- `StringHttpMessageConverter`: String 문자로 데이터를 처리
+  - 클래스 타입: String , 미디어타입: */*
+  - 요청 예) @RequestBody String data
+  - 응답 예) @ResponseBody return "ok", 미디어타입: text/plain
+
+##### HTTP 요청 데이터 읽기 과정
+- HTTP 요청이 오고, 컨트롤러에서 @RequestBody, HttpEntity 파라미터를 사용
+- 메시지 컨버터가 메시지를 읽을 수 있는지 확인하기 위해 canRead()를 호출
+  - `대상 클래스 타입을 지원하는지 체크` 예) @RequestBody 의 대상 클래스 ( byte[] , String , HelloData )
+  - `HTTP 요청의 Content-Type 미디어 타입을 지원하는지 체크` 예) text/plain , application/json , */*
+- canRead() 조건을 만족하면 read()를 호출해서 객체 생성하고, 반환
+
+##### HTTP 응답 데이터 생성 과정
+- 요청에 대한 처리가 어느 정도 되고, 컨트롤러에서 @ResponseBody, HttpEntity 로 값이 반환
+- 메시지 컨버터가 메시지를 쓸 수 있는지 확인하기 위해 canWrite()를 호출
+  - `대상 클래스 타입을 지원하는지 체크` 예) return의 대상 클래스 ( byte[] , String , HelloData )
+  - `HTTP 요청의 Accept 미디어 타입을 지원하는지 체크(@RequestMapping 의 produces)` 예) text/plain , application/json , */*
+- canWrite() 조건을 만족하면 write()를 호출해서 HTTP 응답 메시지 바디에 데이터를 생성
 
 ### 스프링 MVC 기본 기능 - 요청 매핑 헨들러 어뎁터 구조
 
-#####
+##### Sprin MVC 구조와 RequestMappingHandlerAdapter 동작
+<img width="890" alt="스크린샷 2021-05-08 오후 11 29 50" src="https://user-images.githubusercontent.com/38535571/117542847-4f0ea280-b055-11eb-8988-fc68cf119ccd.png">
 
-스프링 MVC 웹 페이지 만들기
-=======
+<img width="806" alt="스크린샷 2021-05-09 오전 4 01 59" src="https://user-images.githubusercontent.com/38535571/117550434-52b52000-b07b-11eb-91ef-6b6be5bc05ec.png">
+
+- @RequestMapping을 처리하는 핸들러 어댑터인 RequestMappingHandlerAdapter(요청 매핑 헨들러 어뎁터)에서 ArgumentResolver와 ReturnValueHandler 실행 도중 HTTP 메시지 컨버팅이 일어남
+
+##### ArgumentResolver
+- 풀네임은 `HandlerMethodArgumentResolver`
+- 애노테이션 기반의 컨트롤러는 HttpServletRequest, Model과 @RequestParam, @ModelAttribute 같은 애노테이션 그리고 @RequestBody, HttpEntity 같은 HTTP 메시지를 처리하는 부분까지 처리
+- 동작 방식
+  - 애노테이션 기반 컨트롤러를 처리하는 RequestMappingHandlerAdaptor는 바로 이 ArgumentResolver를 호출해서 컨트롤러(핸들러)가 필요로 하는 다양한 파라미터의 값(객체)을 생성 하고 파리미터의 값이 모두 준비되면 컨트롤러를 호출하면서 값을 넘겨줌
+  - ArgumentResolver의 supportsParameter()를 호출해서 해당 파라미터를 지원하는지 체크하고, 지원하면 resolveArgument()를 호출해서 실제 객체를 생성하고 그리고 이렇게 생성된 객체가 컨트롤러 호출시 넘겨줌
+
+##### ReturnValueHandler
+- 풀네임은 `HandlerMethodReturnValueHandler`
+- 동작 방식은 ArgumentResolver와 비슷한데, 이것은 응답 값을 변환하고 처리하여 String으로 뷰 이름만 반환해도 동작하도록 해줌
+
+##### HTTP 메시지 컨버터 위치
+- 요청의 경우 `@RequestBody를 처리하는` ArgumentResolver가 있고, HttpEntity 를 처리하는 ArgumentResolver가 있어 ArgumentResolver 들이 HTTP 메시지 컨버터를 사용해서 필요한 객체를 생성하는 것
+- 응답의 경우 `@ResponseBody와 HttpEntity를 처리하는` ReturnValueHandler 가 있어 여기에서 HTTP 메시지 컨버터를 호출해서 응답 결과를 만듦
+
+
+##### 확장
+- 확장 인터페이스
+  - HandlerMethodArgumentResolver
+  - HandlerMethodReturnValueHandler
+  - HttpMessageConverter
+- 기능 확장은 WebMvcConfigurer를 상속 받아서 스프링 빈으로 등록
+```java
+@Bean
+public WebMvcConfigurer webMvcConfigurer() {
+    return new WebMvcConfigurer() {
+        @Override
+        public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+          // ...
+        }
+        
+        @Override
+        public void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
+          //...
+        } 
+  };
+}
+```
