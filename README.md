@@ -2654,5 +2654,9 @@ public WebMvcConfigurer webMvcConfigurer() {
   };
 }
 ```
-### 스프링 MVC 기본 기능
+### 부록
+- 스프링 MVC 기본 기능 코드
 [springmvc](./springmvc)
+
+- 스프링 MVC를 이용한 웹 페이지 만들기
+[iterm-service](./item-service)
