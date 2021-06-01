@@ -50,7 +50,7 @@ Table of contents
 - WAS 장애시 오류 화면도 노출 불가능하므로 웹서버 필요
 - 웹 서버는 애플리케이션 로직같은 동적인 처리가 필요하면 WAS에 요청
 
-### 서블릿
+### Servlet
 
 ##### HTML Form 데이터 전송 처리 과정
 - HTTP 요청 메시지
@@ -82,7 +82,7 @@ Content-Type: text/html;charset=UTF-8 Content-Length: 3423
 </html>
 ```
 
-##### 서블릿
+##### Servlet
 - 비즈니스 로직 이외의 HTTP 스펙을 처리를 해주는 객체
 - 서블릿 코드
   ```java
