@@ -65,7 +65,7 @@ username=kim&age=20
   - HTTP 요청 메시지를 파싱해서 읽기 
   - POST 방식, /save URL 인지 
   - Content-Type 확인
-  - HTTP 메시지 바디 내용 피싱
+  - HTTP 메시지 바디 내용 
     - username, age 데이터를 사용할 수 있게 파싱 저장 프로세스 실행
   - `비즈니스 로직 실행`
     - 데이터베이스에 저장 요청 
